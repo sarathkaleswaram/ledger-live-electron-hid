@@ -25,6 +25,8 @@
   "dependencies": {
     "@ledgerhq/hw-transport-node-hid": "^4.38.6",
     "babel-polyfill": "^6.26.0",
-    "hw-app-csc": "2.0.0"
+    "casinocoin-libjs": "^1.0.12",
+    "hw-app-csc": "2.0.0",
+    "jsonschema": "^1.2.2"
   }
 }

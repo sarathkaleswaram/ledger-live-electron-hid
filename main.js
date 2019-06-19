@@ -1,13 +1,22 @@
-// Modules to control application life and create native browser window
 require("babel-polyfill");
 const TransportNodeHid = require("@ledgerhq/hw-transport-node-hid").default;
 const CSC = require("hw-app-csc").default;
 
+var binary = require('casinocoin-libjs-binary-codec');
+var CasinocoinAPI = require('casinocoin-libjs').CasinocoinAPI;
+var csc_server = "wss://wst01.casinocoin.org:4443";
+
+let api = new CasinocoinAPI({
+  server: csc_server
+});
+
+api.connect().then(() => {
+  console.log('CasinoCoin Connected');
+})
+  .catch(e => console.error(e));
+
 const { app, BrowserWindow, ipcMain } = require("electron");
 
-// This a very basic example
-// Ideally you should not run this code in main thread
-// but run it in a dedicated node.js process
 function getCasinoCoinInfo(verify) {
   return TransportNodeHid.open("")
     .then(transport => {
@@ -16,7 +25,7 @@ function getCasinoCoinInfo(verify) {
       return csc.getAddress("44'/144'/0'/0/0", verify).then(r =>
         transport
           .close()
-          .catch(e => {})
+          .catch(e => { })
           .then(() => r)
       );
     })
@@ -29,6 +38,65 @@ function getCasinoCoinInfo(verify) {
     });
 }
 
+function getCasinoCoinSignTransaction(destination_address, amount) {
+  TransportNodeHid.open("")
+    .then(transport => {
+
+      transport.setDebugMode(true);
+      const csc = new CSC(transport);
+
+      const instructions = {
+        maxLedgerVersionOffset: 5,
+        fee: '0.25'
+      };
+
+      destination_address = destination_address ? destination_address : 'cHb9CJAWyB4cj91VRWn96DkukG4bwdtyTh';
+      amount = amount ? amount : "1";
+
+      csc.getAddress("44'/144'/0'/0/0").then(address => {
+        console.log('Source: ', address.address);
+        console.log('Destination: ', destination_address);
+        console.log('Amount: ', amount);
+
+        var source_address = address.address;
+        let payment = {
+          source: {
+            address: source_address,
+            maxAmount: {
+              value: '10',
+              currency: 'CSC'
+            }
+          },
+          destination: {
+            address: destination_address,
+            amount: {
+              currency: "CSC",
+              value: amount
+            }
+          }
+        };
+
+        api.preparePayment(source_address, payment, instructions).then(prepared => {
+          const json = JSON.parse(prepared.txJSON);
+          json.SigningPubKey = address.publicKey.toUpperCase();
+          const rawTx = binary.encode(json);
+          let txJSON = binary.decode(rawTx);
+
+          csc.signTransaction("44'/144'/0'/0/0", rawTx).then(sign => {
+            txJSON.TxnSignature = sign.toUpperCase();
+            const txHEX = binary.encode(txJSON);
+
+            api.submit(txHEX).then(info => {
+              console.error(info);
+              return api.disconnect();
+            }).catch(e => console.error(e));
+
+          }).catch(e => console.error(e));
+        }).catch(e => console.error(e));
+      });
+    });
+}
+
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
@@ -36,22 +104,14 @@ let mainWindow;
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({ width: 800, height: 600 });
-
   // and load the index.html of the app.
   mainWindow.loadFile("index.html");
-
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
-
+  // mainWindow.webContents.openDevTools();
   // Emitted when the window is closed.
-  mainWindow.on("closed", function() {
-    // Dereference the window object, usually you would store windows
-    // in an array if your app supports multi windows, this is the time
-    // when you should delete the corresponding element.
+  mainWindow.on("closed", function () {
     mainWindow = null;
   });
-
-  // ~~~ BASIC LEDGER EXAMPLE ~~~
 
   ipcMain.on("requestCasinoCoinInfo", () => {
     getCasinoCoinInfo(false).then(result => {
@@ -59,20 +119,19 @@ function createWindow() {
     });
   });
 
+  ipcMain.on("requestCasinoCoinSignTransaction", (event, arg) => {
+    getCasinoCoinSignTransaction(arg[0], arg[1]);
+  });
+
   ipcMain.on("verifyCasinoCoinInfo", () => {
     getCasinoCoinInfo(true);
   });
-
-  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
+
 app.on("ready", createWindow);
 
-// Quit when all windows are closed.
-app.on("window-all-closed", function() {
+app.on("window-all-closed", function () {
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== "darwin") {
@@ -80,13 +139,10 @@ app.on("window-all-closed", function() {
   }
 });
 
-app.on("activate", function() {
+app.on("activate", function () {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) {
     createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.

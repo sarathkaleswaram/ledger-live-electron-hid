@@ -9,7 +9,30 @@ ipcRenderer.on("casinocoinInfo", (event, arg) => {
   document.getElementById("main").innerHTML =
     "<h1>Your first CasinoCoin address:</h1>";
   document.getElementById("main").appendChild(h1);
-  ipcRenderer.send("verifyCasinoCoinInfo");
+  // ipcRenderer.send("verifyCasinoCoinInfo");
+
+  var address = document.createElement('input');
+  address.type = 'text';
+  address.id = 'address';
+  address.placeholder = 'Destination Address';
+  document.body.appendChild(address);
+
+  var amount = document.createElement('input');
+  amount.type = 'text';
+  amount.id = 'amount';
+  amount.placeholder = 'Amount';
+  document.body.appendChild(amount);
+
+  var button = document.createElement('button');
+  button.innerHTML = 'Submit Transaction';
+  button.onclick = function(){
+    var address = document.getElementById('address').value;
+    var amount = document.getElementById('amount').value;
+    document.getElementById('address').value = '';
+    document.getElementById('amount').value = '';
+    ipcRenderer.send("requestCasinoCoinSignTransaction", [address, amount]);
+  };
+  document.body.appendChild(button);
 });
 
 ipcRenderer.send("requestCasinoCoinInfo");
