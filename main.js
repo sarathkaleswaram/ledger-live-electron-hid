@@ -88,7 +88,7 @@ function getCasinoCoinSignTransaction(destination_address, amount) {
 
             api.submit(txHEX).then(info => {
               console.error(info);
-              return api.disconnect();
+              // return api.disconnect();
             }).catch(e => console.error(e));
 
           }).catch(e => console.error(e));
