@@ -4,7 +4,7 @@ const CSC = require("hw-app-csc").default;
 
 var binary = require('casinocoin-libjs-binary-codec');
 var CasinocoinAPI = require('casinocoin-libjs').CasinocoinAPI;
-var csc_server = "wss://wst01.casinocoin.org:4443";
+var csc_server = "wss://ws01.casinocoin.org:4443";
 
 let api = new CasinocoinAPI({
   server: csc_server
@@ -26,7 +26,13 @@ function getCasinoCoinInfo(verify) {
         transport
           .close()
           .catch(e => { })
-          .then(() => r)
+          .then(() => {
+            updateBalance(r);
+            setInterval(function() {              
+              updateBalance(r);
+            }, 5000);
+            return r;
+          })
       );
     })
     .catch(e => {
@@ -38,7 +44,15 @@ function getCasinoCoinInfo(verify) {
     });
 }
 
-function getCasinoCoinSignTransaction(destination_address, amount) {
+function updateBalance(address) {
+  api.getAccountInfo(address.address).then(info => {
+    mainWindow.webContents.send("updateBalance", info.cscBalance);
+  }).catch(e => {
+    mainWindow.webContents.send("updateBalance", "0");
+  });
+}
+
+function getCasinoCoinSignTransaction(destination_address, destination_tag, amount) {
   TransportNodeHid.open("")
     .then(transport => {
 
@@ -47,7 +61,7 @@ function getCasinoCoinSignTransaction(destination_address, amount) {
 
       const instructions = {
         maxLedgerVersionOffset: 5,
-        fee: '0.25'
+        fee: '0.001'
       };
 
       destination_address = destination_address ? destination_address : 'cHb9CJAWyB4cj91VRWn96DkukG4bwdtyTh';
@@ -76,6 +90,10 @@ function getCasinoCoinSignTransaction(destination_address, amount) {
           }
         };
 
+        if (destination_tag) {
+          payment.destination.tag = destination_tag;
+        }
+
         api.preparePayment(source_address, payment, instructions).then(prepared => {
           const json = JSON.parse(prepared.txJSON);
           json.SigningPubKey = address.publicKey.toUpperCase();
@@ -97,6 +115,18 @@ function getCasinoCoinSignTransaction(destination_address, amount) {
     });
 }
 
+function redirectToExplorer(address) {
+  var explorer = new BrowserWindow({ width: 800, height: 600 });
+  var url = "https://explorer.casinocoin.org/address/" + address;
+
+  explorer.loadURL(url);
+  explorer.show();
+
+  explorer.on('closed', function() {
+    explorer = null;
+  });
+}
+
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
@@ -107,7 +137,7 @@ function createWindow() {
   // and load the index.html of the app.
   mainWindow.loadFile("index.html");
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   // Emitted when the window is closed.
   mainWindow.on("closed", function () {
     mainWindow = null;
@@ -120,7 +150,11 @@ function createWindow() {
   });
 
   ipcMain.on("requestCasinoCoinSignTransaction", (event, arg) => {
-    getCasinoCoinSignTransaction(arg[0], arg[1]);
+    getCasinoCoinSignTransaction(arg[0], arg[1], arg[2]);
+  });
+
+  ipcMain.on("redirectToExplorer", (event, arg) => {
+    redirectToExplorer(arg);
   });
 
   ipcMain.on("verifyCasinoCoinInfo", () => {
