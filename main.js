@@ -5,6 +5,7 @@ const CSC = require("hw-app-csc").default;
 var binary = require('casinocoin-libjs-binary-codec');
 var CasinocoinAPI = require('casinocoin-libjs').CasinocoinAPI;
 var csc_server = "wss://ws01.casinocoin.org:4443";
+var feeCSC = '';
 
 let api = new CasinocoinAPI({
   server: csc_server
@@ -12,6 +13,9 @@ let api = new CasinocoinAPI({
 
 api.connect().then(() => {
   console.log('CasinoCoin Connected');
+  api.getServerInfo().then(info => {
+    feeCSC = info.validatedLedger.baseFeeCSC;
+  });
 })
   .catch(e => console.error(e));
 
@@ -61,7 +65,7 @@ function getCasinoCoinSignTransaction(destination_address, destination_tag, amou
 
       const instructions = {
         maxLedgerVersionOffset: 5,
-        fee: '0.001'
+        fee: feeCSC
       };
 
       destination_address = destination_address ? destination_address : 'cHb9CJAWyB4cj91VRWn96DkukG4bwdtyTh';
