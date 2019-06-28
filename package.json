@@ -1,25 +1,43 @@
 {
   "private": true,
-  "name": "basic-electron-hid",
+  "name": "casinocoin-ledger-electron-hid",
   "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "description": "A CasinoCoin Ledger App",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild",
+    "pack": "build --dir",
+    "dist": "build"
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/sarathkaleswaram/ledger-live-electron-hid",
   "keywords": [
     "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
+    "CasinoCoin",
+    "csc",
+    "Ledger"
   ],
-  "author": "GitHub",
+  "build": {
+    "appId": "org.casinocoin-ledger.com",
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": "squirrel",
+      "icon": "build/icon.ico"
+    }
+  },
+  "author": {
+    "name": "CasinoCoin Foundation",
+    "email": "info@casinocoin.org"
+  },
   "license": "CC0-1.0",
   "devDependencies": {
     "electron": "^4.0.3",
+    "electron-builder": "^20.44.4",
     "electron-rebuild": "^1.8.4"
   },
   "dependencies": {
